@@ -3149,9 +3149,9 @@ static ENGINE_ERROR_CODE upr_message_deletion(const void* cookie,
 {
     conn *c = (void*)cookie;
     protocol_binary_request_upr_deletion packet;
-    if (c->wbytes + sizeof(packet.bytes) + nkey + nmeta >= c->wsize) {
-        return ENGINE_E2BIG;
-    }
+    //if (c->wbytes + sizeof(packet.bytes) + nkey + nmeta >= c->wsize) {
+    //    return ENGINE_E2BIG;
+    //}
 
     memset(packet.bytes, 0, sizeof(packet));
     packet.message.header.request.magic =  (uint8_t)PROTOCOL_BINARY_REQ;
