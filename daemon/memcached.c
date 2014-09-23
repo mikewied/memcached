@@ -6298,7 +6298,7 @@ bool conn_ship_log(conn *c) {
         /* up in a situation where we're receiving a burst of nack messages */
         /* we'll only process a subset of messages in our input queue, */
         /* and it will slowly grow.. */
-        c->nevents = settings.reqs_per_tap_event;
+        c->nevents = c->max_dcp_events;
     } else if (c->which & EV_WRITE) {
         --c->nevents;
         if (c->nevents >= 0) {
@@ -6752,7 +6752,7 @@ void event_handler(evutil_socket_t fd, short which, void *arg) {
 
     c->nevents = settings.reqs_per_event;
     if (c->state == conn_ship_log) {
-        c->nevents = settings.reqs_per_tap_event;
+        c->nevents = c->max_dcp_events;
     }
 
     run_event_loop(c);
@@ -7190,6 +7190,25 @@ static bool cookie_is_admin(const void *cookie) {
     return ((conn *)cookie)->admin;
 }
 
+static void cookie_set_priority(const void* cookie, CONN_PRIORITY priority) {
+    conn* c = (conn*)cookie;
+    if (c->dcp) {
+        switch (priority) {
+            case CONN_PRIORITY_HIGH:
+                c->max_dcp_events = 50;
+                break;
+            case CONN_PRIORITY_MED:
+                c->max_dcp_events = 20;
+                break;
+            case CONN_PRIORITY_LOW:
+                c->max_dcp_events = 5;
+                break;
+            default:
+                abort();
+        }
+    }
+}
+
 static void register_callback(ENGINE_HANDLE *eh,
                               ENGINE_EVENT_TYPE type,
                               EVENT_CALLBACK cb, const void *cb_data) {
@@ -7570,6 +7589,7 @@ static SERVER_HANDLE_V1 *get_server_api(void)
         server_cookie_api.release = release_cookie;
         server_cookie_api.set_admin = cookie_set_admin;
         server_cookie_api.is_admin = cookie_is_admin;
+        server_cookie_api.set_priority = cookie_set_priority;
 
         server_stat_api.new_stats = new_independent_stats;
         server_stat_api.release_stats = release_independent_stats;

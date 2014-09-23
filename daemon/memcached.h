@@ -320,6 +320,7 @@ struct conn {
     conn* all_prev;
 
     SOCKET sfd;
+    int max_dcp_events;
     int nevents; /** number of events this connection can process in a single
                      worker thread timeslice */
     bool admin;
