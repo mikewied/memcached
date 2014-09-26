@@ -56,6 +56,10 @@ static void item_set_cas(const void *cookie, item *it, uint64_t cas) {
 
 volatile sig_atomic_t memcached_shutdown;
 
+static int num_high_priority = 50;
+static int num_med_priority = 5;
+static int num_low_priority = 1;
+
 /* Lock for global stats */
 static cb_mutex_t stats_lock;
 
@@ -5377,6 +5381,11 @@ static void server_stats(ADD_STAT add_stats, conn *c, bool aggregate) {
         sprintf(stat_key + strlen(stat_key), "%d", stats.listening_ports[i].port);
         APPEND_STAT(stat_key, "%d", stats.listening_ports[i].curr_conns);
     }
+
+    APPEND_STAT("priority_high", "%d", num_high_priority);
+    APPEND_STAT("priority_med", "%d", num_med_priority);
+    APPEND_STAT("priority_low", "%d", num_low_priority);
+
     APPEND_STAT("total_connections", "%u", stats.total_conns);
     APPEND_STAT("connection_structures", "%u", stats.conn_structs);
     APPEND_STAT("cmd_get", "%"PRIu64, thread_stats.cmd_get);
@@ -7195,13 +7204,13 @@ static void cookie_set_priority(const void* cookie, CONN_PRIORITY priority) {
     if (c->dcp) {
         switch (priority) {
             case CONN_PRIORITY_HIGH:
-                c->max_dcp_events = 50;
+                c->max_dcp_events = num_high_priority;
                 break;
             case CONN_PRIORITY_MED:
-                c->max_dcp_events = 20;
+                c->max_dcp_events = num_med_priority;
                 break;
             case CONN_PRIORITY_LOW:
-                c->max_dcp_events = 5;
+                c->max_dcp_events = num_low_priority;
                 break;
             default:
                 abort();
@@ -8024,6 +8033,18 @@ int main (int argc, char **argv) {
     perform_callbacks(ON_LOG_LEVEL, NULL, NULL);
 
     set_max_filehandles();
+
+    if (getenv("MCD_HIGH_PRIORITY") != NULL) {
+        num_high_priority = atoi(getenv("MCD_HIGH_PRIORITY"));
+    }
+
+    if (getenv("MCD_MED_PRIORITY") != NULL) {
+        num_med_priority = atoi(getenv("MCD_MED_PRIORITY"));
+    }
+
+    if (getenv("MCD_LOW_PRIORITY") != NULL) {
+        num_low_priority = atoi(getenv("MCD_LOW_PRIORITY"));
+    }
 
     if (getenv("MEMCACHED_REQS_TAP_EVENT") != NULL) {
         settings.reqs_per_tap_event = atoi(getenv("MEMCACHED_REQS_TAP_EVENT"));
